@@ -114,6 +114,14 @@ public final class VCardParser_V21 extends VCardParser {
     }
 
     @Override
+    public void parse(InputStream is, String targetCharset) throws IOException, VCardException {
+        mVCardParserImpl.parse(is, targetCharset);
+    }
+
+    @Override
+    public void parseOne(InputStream is, String targetCharset) throws IOException, VCardException {
+        mVCardParserImpl.parseOne(is, targetCharset);
+    }
     public void cancel() {
         mVCardParserImpl.cancel();
     }

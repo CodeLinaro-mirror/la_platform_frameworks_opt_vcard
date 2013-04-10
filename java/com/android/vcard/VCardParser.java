@@ -73,6 +73,9 @@ public abstract class VCardParser {
      */
     public abstract void parseOne(InputStream is) throws IOException, VCardException;
 
+    public abstract void parse(InputStream is, String targetCharset) throws IOException, VCardException;
+
+    public abstract void parseOne(InputStream is, String targetCharset) throws IOException, VCardException;
     /**
      * @deprecated use {@link #addInterpreter(VCardInterpreter)} and
      * {@link #parse(InputStream)}

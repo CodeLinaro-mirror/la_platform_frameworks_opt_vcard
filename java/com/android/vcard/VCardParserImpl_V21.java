@@ -103,6 +103,7 @@ import java.util.Set;
 
     private final List<VCardInterpreter> mInterpreterList = new ArrayList<VCardInterpreter>();
     private boolean mCanceled;
+    private String mTargetCharset = null;
 
     /**
      * <p>
@@ -994,9 +995,13 @@ import java.util.Set;
     }
 
     public void parse(InputStream is) throws IOException, VCardException {
+        parse(is, null);
+	}
+    public void parse(InputStream is, String targetCharset) throws IOException, VCardException {
         if (is == null) {
             throw new NullPointerException("InputStream must not be null.");
         }
+        mTargetCharset = targetCharset;
 
         final InputStreamReader tmpReader = new InputStreamReader(is, mIntermediateCharset);
         mReader = new CustomBufferedReader(tmpReader);
@@ -1025,9 +1030,14 @@ import java.util.Set;
     }
 
     public void parseOne(InputStream is) throws IOException, VCardException {
+        parseOne(is, null);
+	}
+    
+    public void parseOne(InputStream is, String targetCharset) throws IOException, VCardException {
         if (is == null) {
             throw new NullPointerException("InputStream must not be null.");
         }
+        mTargetCharset = targetCharset;
 
         final InputStreamReader tmpReader = new InputStreamReader(is, mIntermediateCharset);
         mReader = new CustomBufferedReader(tmpReader);

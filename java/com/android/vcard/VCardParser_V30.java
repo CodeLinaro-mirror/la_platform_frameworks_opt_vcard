@@ -81,6 +81,17 @@ public class VCardParser_V30 extends VCardParser {
     public void addInterpreter(VCardInterpreter interpreter) {
         mVCardParserImpl.addInterpreter(interpreter);
     }
+    
+    @Override
+    public void parse(InputStream is, String targetCharset) throws IOException, VCardException {
+        mVCardParserImpl.parse(is, targetCharset);
+    }
+
+    @Override
+    public void parseOne(InputStream is, String targetCharset) throws IOException, VCardException {
+        mVCardParserImpl.parseOne(is, targetCharset);
+    }
+
 
     @Override
     public void parse(InputStream is) throws IOException, VCardException {
