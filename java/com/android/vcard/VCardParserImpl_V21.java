@@ -578,6 +578,9 @@ import java.util.Set;
         String targetCharset =
                 ((charsetCollection != null) ? charsetCollection.iterator().next() : null);
         if (TextUtils.isEmpty(targetCharset)) {
+            targetCharset = mTargetCharset;
+        }
+        if (TextUtils.isEmpty(targetCharset)) {
             targetCharset = VCardConfig.DEFAULT_IMPORT_CHARSET;
         }
 
