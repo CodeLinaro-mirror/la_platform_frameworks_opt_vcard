@@ -25,6 +25,11 @@ import android.util.Log;
 import com.android.vcard.exception.VCardException;
 
 import java.io.ByteArrayOutputStream;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -34,6 +39,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,6 +48,11 @@ import java.util.Set;
  */
 public class VCardUtils {
     private static final String LOG_TAG = VCardConstants.LOG_TAG;
+    public static final String CODEC_UTF8 = "UTF-8";
+    public static final String CODEC_UNICODE = "UNICODE";
+    public static final String CODEC_GBK = "GBK";
+    public static final String CODEC_GB2312 = "GB2312";
+    public static final String CODEC_BIG5 = "Big5-HKSCS"; 
 
     /**
      * See org.apache.commons.codec.DecoderException
@@ -848,6 +859,132 @@ public class VCardUtils {
         }
     }
 
+    static public String getTextcodecFromContent(byte[] str, int size)
+    {
+        
+        if (str[0]=='\0' || size<=0){
+            return null;
+        }
+
+        boolean bIsUtf8 = true;
+        boolean bIsGbk = true;
+        boolean bIsGb2312 = true;
+
+        if((str[0]==(byte)0xff && str[1]==(byte)0xfe)||(str[0]==(byte)0xfe && str[1]==(byte)0xff)){
+            return CODEC_UNICODE;
+        }
+        
+        if(str[0]==0){
+            return CODEC_UNICODE;
+        }
+
+        for (int i = 0; i < size; ) {
+            if(str[i] >= 0 && str[i]<=0x7f){
+                i++;
+            }
+            else if((i + 1 <size)
+                && ((str[i] & (byte)0xe0) == (byte)0xc0) 
+                && ((str[i+1] & (byte)0xc0) == (byte)0x80)){
+                i+=2;
+            }
+            else if((i + 2 <size)
+                && ((str[i] & (byte)0xf0) == (byte)0xe0) 
+                && ((str[i+1] & (byte)0xc0) == (byte)0x80) 
+                && ((str[i+2] & (byte)0xc0) == (byte)0x80)){
+                i+=3;
+            }
+            else{
+                bIsUtf8 = false;
+                break;
+            }
+        }
+        
+        if(bIsUtf8){    
+            //System.out.println(TAG,"4704");
+            return CODEC_UTF8;
+        }
+
+        for (int i = 0; i+2 < size; ) {
+            if(str[i] >= 0 && str[i]<=0x7f){
+                i++;
+            }
+            else if(str[i] < 0 && str[i] >= (byte)0x81){    
+                if(str[i] != (byte)0xff){   
+                    if((str[i] >= 0 && str[i]<=0x7f) 
+                            || (str[i] < 0 && str[i] < (byte)0xa1)){    
+                        bIsGb2312 = false;
+                    }
+                    if(str[i+1] >= 0x40 || str[i+1] < 0){   
+                        if((str[i+1] != (byte)0xff) && (str[i+1] != 0x7f)){ 
+                            if((str[i+1] >= 0 && str[i+1]<=0x7f) 
+                                    || (str[i+1] < 0 && str[i+1] < (byte)0xa1)){    
+                                bIsGb2312 = false;
+                            }
+                            i += 2;
+                        }
+                        else{   
+                            bIsGbk = false;
+                            bIsGb2312 = false;
+                            break;
+                        }
+                    }
+                    else{   
+                        bIsGbk = false;
+                        bIsGb2312 = false;
+                        break;
+                    }
+                }
+                else{   
+                    bIsGbk = false;
+                    bIsGb2312 = false;
+                    break;
+                }
+            }
+            else{   
+                bIsGbk = false;
+                bIsGb2312 = false;
+                break;
+            }
+        }
+        
+        if(bIsGb2312){  
+            return CODEC_GB2312;
+        }
+        if(bIsGbk){
+            return CODEC_GBK;
+        }
+        
+        return CODEC_UNICODE;
+    }
+
+
+    /*
+    this func can read a File's content and get text codec
+    the param "f" is the File you want to operate
+    */
+    static public  String getTextcodecFromFile(File f) throws IOException {  
+        InputStream is = null;
+        String ret = "UTF-8";
+        try {
+            is = new BufferedInputStream( new FileInputStream(f) );
+            long contentLength = f.length();
+            ByteArrayOutputStream outstream = 
+                new ByteArrayOutputStream( contentLength > 0 ? (int) contentLength:1024);
+            byte[] buffer = new byte[4096];
+            int len;
+            while ((len = is.read(buffer)) > 0) {
+                outstream.write(buffer, 0, len);
+                //only parse 4096  byte
+                break;
+            }            
+            byte[] b_tmp = outstream.toByteArray();
+            ret = getTextcodecFromContent(b_tmp, outstream.size());
+            outstream.close();
+        } finally {
+            if(is!=null) {try{is.close();} catch(Exception e){} }
+        }
+        return ret;        
+    }
     // TODO: utilities for vCard 4.0: datetime, timestamp, integer, float, and boolean
 
     private VCardUtils() {
