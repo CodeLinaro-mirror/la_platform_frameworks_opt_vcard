@@ -534,9 +534,22 @@ public class VCardComposer {
 
             while (entityIterator.hasNext()) {
                 Entity entity = entityIterator.next();
+                    ContentValues cv = entity.getEntityValues();
+                    String account_type = cv.getAsString(RawContacts.ACCOUNT_TYPE);
+                    //Log.i("Test","account_type:" + account_type);
+                    boolean isCard = false;
+                    if("com.android.sim".equals(account_type)
+                    )
+                    {
+                        isCard = true;
+                    }
                 for (NamedContentValues namedContentValues : entity.getSubValues()) {
                     ContentValues contentValues = namedContentValues.values;
                     String key = contentValues.getAsString(Data.MIMETYPE);
+                    if(isCard && key != null && key.equals(Photo.CONTENT_ITEM_TYPE))
+                    {
+                        continue;
+                    }
                     if (key != null) {
                         List<ContentValues> contentValuesList =
                                 contentValuesListMap.get(key);
