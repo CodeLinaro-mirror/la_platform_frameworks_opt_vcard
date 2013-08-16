@@ -115,6 +115,11 @@ public class VCardComposer {
     private static final String SHIFT_JIS = "SHIFT_JIS";
     private static final String UTF_8 = "UTF-8";
 
+    private static final String SIM_NAME_1 = "SIM1";
+    private static final String SIM_NAME_2 = "SIM2";
+    private static final String SIM_NAME_3 = "SIM3";
+    private static final String SIM_NAME = "SIM";
+
     private static final Map<Integer, String> sImMap;
 
     static {
@@ -144,6 +149,8 @@ public class VCardComposer {
     private Uri mContentUriForRawContactsEntity;
 
     private final String mCharset;
+
+    private String mCurrentContactID = null;
 
     private boolean mInitDone;
     private String mErrorReason = NO_ERROR;
@@ -553,6 +560,7 @@ public class VCardComposer {
                 entityIterator.close();
             }
         }
+        mCurrentContactID = contactId;
 
         return buildVCard(contentValuesListMap);
     }
@@ -575,6 +583,32 @@ public class VCardComposer {
         mPhoneTranslationCallback = callback;
     }
 
+    /** return whether the contact's account type is sim account */
+    private boolean isSimcardAccount(String contactid) {
+        boolean isSimAccount = false;
+        Cursor cursor = null;
+        try {
+            cursor = mContentResolver.query(RawContacts.CONTENT_URI,
+                    new String[] { RawContacts.ACCOUNT_NAME },
+                    RawContacts.CONTACT_ID + "=?", new String[] { contactid },
+                    null);
+            if (null != cursor && 0 != cursor.getCount() && cursor.moveToFirst()) {
+                String accountName = cursor.getString(
+                        cursor.getColumnIndex(RawContacts.ACCOUNT_NAME));
+                if (SIM_NAME.equals(accountName) || SIM_NAME_1.equals(accountName) ||
+                        SIM_NAME_2.equals(accountName) || SIM_NAME_3.equals(accountName)) {
+                    isSimAccount = true;
+                }
+            }
+        } finally {
+            if (null != cursor) {
+                cursor.close();
+            }
+        }
+
+        return isSimAccount;
+    }
+
     /**
      * Builds and returns vCard using given map, whose key is CONTENT_ITEM_TYPE defined in
      * {ContactsContract}. Developers can override this method to customize the output.
@@ -593,7 +627,8 @@ public class VCardComposer {
                     .appendPostals(contentValuesListMap.get(StructuredPostal.CONTENT_ITEM_TYPE))
                     .appendOrganizations(contentValuesListMap.get(Organization.CONTENT_ITEM_TYPE))
                     .appendWebsites(contentValuesListMap.get(Website.CONTENT_ITEM_TYPE));
-            if ((mVCardType & VCardConfig.FLAG_REFRAIN_IMAGE_EXPORT) == 0) {
+            if ((mVCardType & VCardConfig.FLAG_REFRAIN_IMAGE_EXPORT) == 0
+                    && mCurrentContactID != null && !isSimcardAccount(mCurrentContactID)) {
                 builder.appendPhotos(contentValuesListMap.get(Photo.CONTENT_ITEM_TYPE));
             }
             builder.appendNotes(contentValuesListMap.get(Note.CONTENT_ITEM_TYPE))
