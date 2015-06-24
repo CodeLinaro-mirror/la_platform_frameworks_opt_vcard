@@ -79,6 +79,7 @@ public class VCardEntry {
         sImMap.put(VCardConstants.PROPERTY_X_JABBER, Im.PROTOCOL_JABBER);
         sImMap.put(VCardConstants.PROPERTY_X_SKYPE_USERNAME, Im.PROTOCOL_SKYPE);
         sImMap.put(VCardConstants.PROPERTY_X_GOOGLE_TALK, Im.PROTOCOL_GOOGLE_TALK);
+        sImMap.put(VCardConstants.PROPERTY_X_QQ, Im.PROTOCOL_QQ);
         sImMap.put(VCardConstants.ImportOnly.PROPERTY_X_GOOGLE_TALK_WITH_SPACE,
                 Im.PROTOCOL_GOOGLE_TALK);
     }
