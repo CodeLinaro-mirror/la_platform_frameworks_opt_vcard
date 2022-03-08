@@ -151,6 +151,11 @@ public class VCardComposer {
     private String mErrorReason = NO_ERROR;
 
     /**
+     * Set to true when {@link #enableIteratorMode()} is called
+     */
+    private boolean mIsUseEntityIterator = false;
+
+    /**
      * Set to false when one of {@link #init()} variants is called, and set to true when
      * {@link #terminate()} is called. Initially set to true.
      */
@@ -399,6 +404,9 @@ public class VCardComposer {
         if (!initInterMainPart()) {
             return false;
         }
+        if (mIsUseEntityIterator) {
+            initEntityIterator();
+        }
         return initInterLastPart();
     }
 
@@ -463,6 +471,14 @@ public class VCardComposer {
         mInitDone = true;
         mTerminateCalled = false;
         return true;
+    }
+
+    /**
+     * set {@link #mIsUseEntityIterator} to true, must called before
+     * {@link #initWithCallback(Cursor, RawContactEntitlesInfoCallback)}
+     */
+    public void enableIteratorMode() {
+        mIsUseEntityIterator = true;
     }
 
     /**
