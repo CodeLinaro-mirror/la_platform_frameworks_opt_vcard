@@ -490,7 +490,7 @@ public class VCardComposer {
                 ?createOneEntryInternal(mCursor.getLong(mIdColumn),getEntityIteratorMethod)
                         :createOneEntryInternalByIterator();
         if (!mCursor.moveToNext()) {
-            Log.e(LOG_TAG, "Cursor#moveToNext() returned false");
+            Log.i(LOG_TAG, "Cursor#moveToNext() returned false");
         }
         return vcard;
     }
