@@ -141,6 +141,7 @@ public class VCardComposer {
     private Cursor mCursor;
     private EntityIterator mEntityIterator;
     private Entity mEntity;
+    private Method mGetEntityIteratorMethod;
     private boolean mCursorSuppliedFromOutside;
     private int mIdColumn;
     private Uri mContentUriForRawContactsEntity;
@@ -375,6 +376,15 @@ public class VCardComposer {
 
     /**
      * Just for testing for now. Do not use.
+     * Execute before init.
+     * @hide
+     */
+    public void setGetEntityIteratorMethod(Method getEntityIteratorMethod) {
+        mGetEntityIteratorMethod = getEntityIteratorMethod;
+    }
+
+    /**
+     * Just for testing for now. Do not use.
      * @hide
      */
     public boolean init(Cursor cursor) {
@@ -399,6 +409,7 @@ public class VCardComposer {
         if (!initInterMainPart()) {
             return false;
         }
+        initEntityIterator();
         return initInterLastPart();
     }
 
@@ -444,22 +455,61 @@ public class VCardComposer {
         return mIdColumn >= 0;
     }
 
+    // Testing with 500 Contacts IDs, the export time using an EntityIterator containing all
+    // Contacts IDs is approximately 120ms (each EntityIterator containing one Contacts ID takes
+    // about 700ms).
+    // Initializing an EntityIterator with 500 Contacts IDs takes about 10ms.
     private void initEntityIterator() {
         StringBuilder selection = new StringBuilder();
-        selection.append(Data.CONTACT_ID).append(" IN (");
-        do {
-            selection.append(mCursor.getString(mIdColumn));
-            if (!mCursor.isLast()) {
-                selection.append(",");
-            }
-        } while (mCursor.moveToNext());
-        selection.append(")");
-        mEntityIterator = RawContacts
-                .newEntityIterator(mContentResolver.query(mContentUriForRawContactsEntity, null,
-                        selection.toString(), null, Data.CONTACT_ID));
-        mCursor.moveToFirst();
-    }
+        StringBuilder contactIds = new StringBuilder();
+        Uri uri = mContentUriForRawContactsEntity;
 
+        if (mRawContactEntitlesInfoCallback != null) {
+            RawContactEntitlesInfo rawContactEntitlesInfo =
+                    mRawContactEntitlesInfoCallback.getRawContactEntitlesInfo(
+                            mCursor.getLong(mIdColumn));
+            uri = rawContactEntitlesInfo.rawContactEntitlesUri;
+            contactIds.append(rawContactEntitlesInfo.contactId);
+        } else {
+            do {
+                contactIds.append(mCursor.getString(mIdColumn));
+                if (!mCursor.isLast()) {
+                    contactIds.append(",");
+                } else {
+                    break;
+                }
+            } while (mCursor.moveToNext());
+            // There are some callers that assume that the cursor is at its first position after
+            // init.
+            // See b/402311014
+            mCursor.moveToFirst();
+        }
+
+        selection.append(Data.CONTACT_ID).append(" IN (");
+        selection.append(contactIds);
+        selection.append(")");
+
+        if (mGetEntityIteratorMethod != null) {
+            // Please note that this code is executed by unit tests only
+            try {
+                mEntityIterator = (EntityIterator) mGetEntityIteratorMethod.invoke(null,
+                        mContentResolver, uri, selection.toString(), null, null);
+            } catch (IllegalArgumentException e) {
+                Log.e(LOG_TAG, "IllegalArgumentException has been thrown: " +
+                        e.getMessage());
+            } catch (IllegalAccessException e) {
+                Log.e(LOG_TAG, "IllegalAccessException has been thrown: " +
+                        e.getMessage());
+            } catch (InvocationTargetException e) {
+                Log.e(LOG_TAG, "InvocationTargetException has been thrown: ", e);
+                throw new RuntimeException("InvocationTargetException has been thrown");
+            }
+        } else {
+            mEntityIterator = RawContacts
+                    .newEntityIterator(mContentResolver.query(uri, null,
+                            selection.toString(), null, Data.CONTACT_ID));
+        }
+    }
     private boolean initInterLastPart() {
         mInitDone = true;
         mTerminateCalled = false;
@@ -470,13 +520,11 @@ public class VCardComposer {
      * @return a vCard string.
      */
     public String createOneEntry() {
-        return createOneEntry(null);
-    }
+        if (!mInitDone) {
+            Log.w(LOG_TAG, "This object is not ready yet.");
+            return "";
+        }
 
-    /**
-     * @hide
-     */
-    public String createOneEntry(Method getEntityIteratorMethod) {
         if (mIsDoCoMo && !mFirstVCardEmittedInDoCoMoCase) {
             mFirstVCardEmittedInDoCoMoCase = true;
             // Previously we needed to emit empty data for this specific case, but actually
@@ -486,13 +534,7 @@ public class VCardComposer {
             // return createOneEntryInternal("-1", getEntityIteratorMethod);
         }
 
-        final String vcard = (mEntityIterator == null || getEntityIteratorMethod != null)
-                ?createOneEntryInternal(mCursor.getLong(mIdColumn),getEntityIteratorMethod)
-                        :createOneEntryInternalByIterator();
-        if (!mCursor.moveToNext()) {
-            Log.i(LOG_TAG, "Cursor#moveToNext() returned false");
-        }
-        return vcard;
+        return createOneEntryInternal();
     }
 
     /**
@@ -571,73 +613,25 @@ public class VCardComposer {
         return buildVCard(contentValuesListMap);
     }
 
-    private String createOneEntryInternal(long contactId,
-            final Method getEntityIteratorMethod) {
+    private String createOneEntryInternal() {
+        if (!mEntityIterator.hasNext()) {
+            Log.w(LOG_TAG, "EntityIterator#hasNext() returned false");
+            return "";
+        }
+
         final Map<String, List<ContentValues>> contentValuesListMap =
                 new HashMap<String, List<ContentValues>>();
-        // The resolver may return the entity iterator with no data. It is possible.
-        // e.g. If all the data in the contact of the given contact id are not exportable ones,
-        //      they are hidden from the view of this method, though contact id itself exists.
-        EntityIterator entityIterator = null;
-        try {
-            Uri uri = mContentUriForRawContactsEntity;
-            if (mRawContactEntitlesInfoCallback != null) {
-                RawContactEntitlesInfo rawContactEntitlesInfo =
-                        mRawContactEntitlesInfoCallback.getRawContactEntitlesInfo(contactId);
-                uri = rawContactEntitlesInfo.rawContactEntitlesUri;
-                contactId = rawContactEntitlesInfo.contactId;
-            }
-            final String selection = Data.CONTACT_ID + "=?";
-            final String[] selectionArgs = new String[] {String.valueOf(contactId)};
-            if (getEntityIteratorMethod != null) {
-                // Please note that this branch is executed by unit tests only
-                try {
-                    entityIterator = (EntityIterator)getEntityIteratorMethod.invoke(null,
-                            mContentResolver, uri, selection, selectionArgs, null);
-                } catch (IllegalArgumentException e) {
-                    Log.e(LOG_TAG, "IllegalArgumentException has been thrown: " +
-                            e.getMessage());
-                } catch (IllegalAccessException e) {
-                    Log.e(LOG_TAG, "IllegalAccessException has been thrown: " +
-                            e.getMessage());
-                } catch (InvocationTargetException e) {
-                    Log.e(LOG_TAG, "InvocationTargetException has been thrown: ", e);
-                    throw new RuntimeException("InvocationTargetException has been thrown");
+        Entity entity = mEntityIterator.next();
+        for (NamedContentValues namedContentValues : entity.getSubValues()) {
+            ContentValues contentValues = namedContentValues.values;
+            String key = contentValues.getAsString(Data.MIMETYPE);
+            if (key != null) {
+                List<ContentValues> contentValuesList = contentValuesListMap.get(key);
+                if (contentValuesList == null) {
+                    contentValuesList = new ArrayList<ContentValues>();
+                    contentValuesListMap.put(key, contentValuesList);
                 }
-            } else {
-                entityIterator = RawContacts.newEntityIterator(mContentResolver.query(
-                        uri, null, selection, selectionArgs, null));
-            }
-
-            if (entityIterator == null) {
-                Log.e(LOG_TAG, "EntityIterator is null");
-                return "";
-            }
-
-            if (!entityIterator.hasNext()) {
-                Log.w(LOG_TAG, "Data does not exist. contactId: " + contactId);
-                return "";
-            }
-
-            while (entityIterator.hasNext()) {
-                Entity entity = entityIterator.next();
-                for (NamedContentValues namedContentValues : entity.getSubValues()) {
-                    ContentValues contentValues = namedContentValues.values;
-                    String key = contentValues.getAsString(Data.MIMETYPE);
-                    if (key != null) {
-                        List<ContentValues> contentValuesList =
-                                contentValuesListMap.get(key);
-                        if (contentValuesList == null) {
-                            contentValuesList = new ArrayList<ContentValues>();
-                            contentValuesListMap.put(key, contentValuesList);
-                        }
-                        contentValuesList.add(contentValues);
-                    }
-                }
-            }
-        } finally {
-            if (entityIterator != null) {
-                entityIterator.close();
+                contentValuesList.add(contentValues);
             }
         }
 
@@ -763,14 +757,14 @@ public class VCardComposer {
      * when this object is not ready yet.
      */
     public boolean isAfterLast() {
-        if (mCursor == null) {
+        if (mEntityIterator == null) {
             Log.w(LOG_TAG, "This object is not ready yet.");
             return false;
         }
         if(mEntityIterator != null){
-            return ((!mEntityIterator.hasNext()) && mEntity == null) || mCursor.isAfterLast();
+            return ((!mEntityIterator.hasNext()) && mEntity == null) || !mEntityIterator.hasNext();
         }
-        return mCursor.isAfterLast();
+        return !mEntityIterator.hasNext();
     }
 
     /**
