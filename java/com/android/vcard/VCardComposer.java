@@ -562,57 +562,6 @@ public class VCardComposer {
         RawContactEntitlesInfo getRawContactEntitlesInfo(long contactId);
     }
 
-    private String createOneEntryInternalByIterator() {
-        if (!mEntityIterator.hasNext()) {
-            if (mEntity == null) {
-                Log.e(LOG_TAG, "EntityIterator#hasNext() returned false");
-                return null;
-            }
-        }
-        final Map<String, List<ContentValues>> contentValuesListMap = new HashMap<String, List<ContentValues>>();
-        int lastContactId = -1;
-        if (mEntity != null) {
-            lastContactId = mEntity.getEntityValues().getAsInteger(Data.CONTACT_ID);
-            for (NamedContentValues namedContentValues : mEntity.getSubValues()) {
-                ContentValues contentValues = namedContentValues.values;
-                String key = contentValues.getAsString(Data.MIMETYPE);
-                if (key != null) {
-                    List<ContentValues> contentValuesList = contentValuesListMap.get(key);
-                    if (contentValuesList == null) {
-                        contentValuesList = new ArrayList<ContentValues>();
-                        contentValuesListMap.put(key, contentValuesList);
-                    }
-                    contentValuesList.add(contentValues);
-                }
-            }
-            mEntity = null;
-        }
-        while (mEntityIterator.hasNext()) {
-            Entity entity = mEntityIterator.next();
-            int contactId = entity.getEntityValues().getAsInteger(Data.CONTACT_ID);
-            if ((lastContactId == -1 || contactId == lastContactId)) {
-                for (NamedContentValues namedContentValues : entity.getSubValues()) {
-                    ContentValues contentValues = namedContentValues.values;
-                    String key = contentValues.getAsString(Data.MIMETYPE);
-                    if (key != null) {
-                        List<ContentValues> contentValuesList = contentValuesListMap.get(key);
-                        if (contentValuesList == null) {
-                            contentValuesList = new ArrayList<ContentValues>();
-                            contentValuesListMap.put(key, contentValuesList);
-                        }
-                        contentValuesList.add(contentValues);
-                    }
-                }
-                lastContactId = contactId;
-            } else {
-                lastContactId = contactId;
-                mEntity = entity;
-                break;
-            }
-        }
-        return buildVCard(contentValuesListMap);
-    }
-
     private String createOneEntryInternal() {
         if (!mEntityIterator.hasNext()) {
             Log.w(LOG_TAG, "EntityIterator#hasNext() returned false");
@@ -728,6 +677,7 @@ public class VCardComposer {
         }
     }
 
+    @SuppressWarnings("Finalize")
     @Override
     protected void finalize() throws Throwable {
         try {
