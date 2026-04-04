@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -1006,8 +1005,7 @@ import java.util.Set;
             throw new NullPointerException("InputStream must not be null.");
         }
 
-        final Charset charset = Charset.forName(mIntermediateCharset);
-        final InputStreamReader tmpReader = new InputStreamReader(is, charset);
+        final InputStreamReader tmpReader = new InputStreamReader(is, mIntermediateCharset);
         mReader = new CustomBufferedReader(tmpReader);
 
         for (VCardInterpreter interpreter : mInterpreterList) {
@@ -1037,8 +1035,7 @@ import java.util.Set;
             throw new NullPointerException("InputStream must not be null.");
         }
 
-        final Charset charset = Charset.forName(mIntermediateCharset);
-        final InputStreamReader tmpReader = new InputStreamReader(is, charset);
+        final InputStreamReader tmpReader = new InputStreamReader(is, mIntermediateCharset);
         mReader = new CustomBufferedReader(tmpReader);
 
         for (VCardInterpreter interpreter : mInterpreterList) {

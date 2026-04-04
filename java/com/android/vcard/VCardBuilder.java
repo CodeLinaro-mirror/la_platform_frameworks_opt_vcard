@@ -41,7 +41,7 @@ import android.util.Log;
 
 import com.android.vcard.VCardUtils.PhoneNumberUtilsPort;
 
-import java.nio.charset.Charset;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -2155,8 +2155,8 @@ public class VCardBuilder {
         byte[] strArray = null;
 
         try {
-            strArray = str.getBytes(Charset.forName(mCharset));
-        } catch (Exception e) {
+            strArray = str.getBytes(mCharset);
+        } catch (UnsupportedEncodingException e) {
             Log.e(LOG_TAG, "Charset " + mCharset + " cannot be used. "
                     + "Try default charset");
             strArray = str.getBytes();

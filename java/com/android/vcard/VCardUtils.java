@@ -25,6 +25,7 @@ import android.util.Log;
 import com.android.vcard.exception.VCardException;
 
 import java.io.ByteArrayOutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -792,8 +793,8 @@ public class VCardUtils {
 
         byte[] rawBytes = null;
         try {
-            rawBytes = rawString.getBytes(Charset.forName(sourceCharset));
-        } catch (Exception e) {
+            rawBytes = rawString.getBytes(sourceCharset);
+        } catch (UnsupportedEncodingException e) {
             Log.w(LOG_TAG, "Failed to decode: " + sourceCharset);
             rawBytes = rawString.getBytes();
         }
@@ -807,8 +808,8 @@ public class VCardUtils {
         }
 
         try {
-            return new String(decodedBytes, Charset.forName(targetCharset));
-        } catch (Exception e) {
+            return new String(decodedBytes, targetCharset);
+        } catch (UnsupportedEncodingException e) {
             Log.e(LOG_TAG, "Failed to encode: charset=" + targetCharset);
             return new String(decodedBytes);
         }
@@ -839,8 +840,8 @@ public class VCardUtils {
         final byte[] bytes = new byte[byteBuffer.remaining()];
         byteBuffer.get(bytes);
         try {
-            return new String(bytes, Charset.forName(targetCharset));
-        } catch (Exception e) {
+            return new String(bytes, targetCharset);
+        } catch (UnsupportedEncodingException e) {
             Log.e(LOG_TAG, "Failed to encode: charset=" + targetCharset);
             return null;
         }

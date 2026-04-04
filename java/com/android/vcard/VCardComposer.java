@@ -140,6 +140,7 @@ public class VCardComposer {
 
     private Cursor mCursor;
     private EntityIterator mEntityIterator;
+    private Entity mEntity;
     private Method mGetEntityIteratorMethod;
     private boolean mCursorSuppliedFromOutside;
     private int mIdColumn;
@@ -509,7 +510,6 @@ public class VCardComposer {
                             selection.toString(), null, Data.CONTACT_ID));
         }
     }
-
     private boolean initInterLastPart() {
         mInitDone = true;
         mTerminateCalled = false;
@@ -588,6 +588,7 @@ public class VCardComposer {
             Log.w(LOG_TAG, "EntityIterator#hasNext() returned false");
             return "";
         }
+
         final Map<String, List<ContentValues>> contentValuesListMap =
                 new HashMap<String, List<ContentValues>>();
         Entity entity = mEntityIterator.next();
@@ -708,7 +709,7 @@ public class VCardComposer {
             }
             mCursor = null;
         }
-        if (mEntityIterator != null) {
+        if(mEntityIterator != null){
             try{
                 mEntityIterator.close();
             } catch (SQLiteException e) {
@@ -751,6 +752,9 @@ public class VCardComposer {
         if (mEntityIterator == null) {
             Log.w(LOG_TAG, "This object is not ready yet.");
             return false;
+        }
+        if(mEntityIterator != null){
+            return ((!mEntityIterator.hasNext()) && mEntity == null) || !mEntityIterator.hasNext();
         }
         return !mEntityIterator.hasNext();
     }
